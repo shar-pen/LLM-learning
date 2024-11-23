@@ -4,24 +4,16 @@ Here's the content from the image converted into Markdown:
 
 ---
 
-### 1. LLM概述
-
-- LLM发展历程及应用
-- LLM技术路径
-- 数据预处理、Tokenizer、Embedding
-- Word2Vec
-- 指标如BLEU/Rouge/WER/PPL
-
-### 2. 手撕Transformer
+### 1. 手撕Transformer
 
 - Transformer模型架构
 - 输入position Encoding
 - 注意力Attention原理和实现
 - Encoder-Decoder实现
 - 掩码(Masked)层
-- 实践：英文文本翻译
+- 实践：英文文本翻译 https://github.com/dt-3t/Transformer-en-to-cn.git https://blog.csdn.net/qq_36396406/article/details/132384993
 
-### 3. 手撕GPT
+### 2. 手撕GPT
 
 - GPT1/2/3/3.5/4论文解析
 - GPT模型架构
@@ -29,6 +21,12 @@ Here's the content from the image converted into Markdown:
 - Generate阶段
 - FlashAttention加速
 - 实践：GPT预测处理单词
+
+
+
+https://github.com/karpathy/nanoGPT/tree/master
+
+
 
 ### 4. 手撕LLaMA
 
