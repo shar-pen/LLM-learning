@@ -52,7 +52,7 @@ OpenAI提出的GPT-2模型(https://openai.com/blog/better-language-models/)能�
 - 优点：自然地融入双向语言模型，同时看到被预测单词的上文和下文
 - 缺点：训练和预测不一致。训练的时候输入引入了[Mask]标记，但是在预测阶段往往没有这个[Mask]标记，导致预训练阶段和Fine-tuning阶段不一致。
 
-接着我们来看看什么是常用的自回归（auto-regressive）语言模型：语言模型根据输入句子的一部分文本来预测下一个词。日常生活中最常见的语言模型就是输入法提示，它可以根据你输入的内容，提示下一个单词。
+接着我们来看看什么是常用的自回归（auto-regressive）语言模型：**语言模型根据输入句子的一部分文本来预测下一个词。日常生活中最常见的语言模型就是输入法提示，它可以根据你输入的内容，提示下一个单词。**
 
 ![词之间的关系](./assets/4-word2vec.webp) 
 
@@ -64,7 +64,6 @@ OpenAI提出的GPT-2模型(https://openai.com/blog/better-language-models/)能�
 - 缺点：由于一般是从左到右（当然也可能从右到左），所以只能利用上文或者下文的信息，不能同时利用上文和下文的信息。
 
 GPT-2属于自回归语言模型，相比于手机app上的输入提示，GPT-2更加复杂，功能也更加强大。因为，OpenAI的研究人员从互联网上爬取了40GB的WebText数据集，并用该数据集训练了GPT-2模型。我们可以直接在[AllenAI GPT-2 Explorer网站](https://gpt2.apps.allenai.org/?text=Joel)上试用GPT-2模型。
-![gpt2 output](./../../../NLP_codes/learn-nlp-with-transformers/docs/篇章2-Transformer相关原理/pictures/2-4-gpt-2-autoregression-2.gif)图：自回归GPT-2
 
 ![GPT发展](./assets/4-gpt-his.webp)图：多种GPT模型
 
@@ -131,7 +130,7 @@ GPT-2能够处理1024 个token。每个token沿着自己的路径经过所有的
 
 ![拆解GPT2](./assets/4-gpt2-the.gif)动态图：拆解GPT2
 
-请注意，第二条路径是此计算中唯一活动的路径。GPT-2 的每一层都保留了它对第一个 token所编码的信息，而且会在处理第二个 token 时直接使用它：GPT-2 不会根据第2个 token 重新计算第一个 token。
+**请注意，第二条路径是此计算中唯一活动的路径。GPT-2 的每一层都保留了它对第一个 token所编码的信息，而且会在处理第二个 token 时直接使用它：GPT-2 不会根据第2个 token 重新计算第一个 token**。
 
 不断重复上述步骤，就可以生成更多的单词了。
 

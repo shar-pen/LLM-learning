@@ -11,7 +11,6 @@
 - token 和 position Embedding
 - LayerNorm
 - 残差连接FFN
-
 - Encoder-Decoder实现
 
 参考：
@@ -22,73 +21,57 @@
 
 ## 手撕BERT
 
+文档：
 
+1. 图解BERT
 
+2. 分词预处理
+
+3. WordPiece讲解
 
 
 ## 手撕GPT
 
+文档：
+
+1. 图解GPT
+2. BPE讲解
+3. FlashAttention
+
+代码：
+
 BPE（Byte-Pair Encoding）分词算法
+
+GPT模型
+
+大模型简单推理
 
 
 
 参考：
 
+
+
 nanoGPT，代码：https://github.com/karpathy/nanoGPT.git
 
-
-
-
-
 ## 手撕LLAMA
-
-
 
 https://blog.csdn.net/qq_35054222/article/details/139123494
 
 llama3 implemented from scratch，代码：https://github.com/naklecha/llama3-from-scratch
 
-
-
-
-
 ## 手撕Alpaca
-
-
 
 计算全量微调占显存
 
-
-
-
-
 Stanford Alpaca: An Instruction-following LLaMA Model，代码： https://github.com/tatsu-lab/stanford_alpaca，运行教程：https://zhuanlan.zhihu.com/p/618321077
-
-
-
-
-
-
 
 ## 手撕LORA
 
 LoRA/QLoRA论文解析
 
-
-
-
-
-
-
 ### LLM推理优化技术
-
-
 
 VLLM
 
-
-
 https://github.com/liguodongiot/llm-action/
-
-
-
