@@ -64,7 +64,7 @@ BERT在2018年被提出，BERT模型一出现就打破了多个自然语言处�
 
 ## 模型输入
 
-接着看一下模型的输入和输出：BERT模型输入有一点特殊的地方是在一句话最开始拼接了一个[CLS] token，如下图所示。这个特殊的[CLS] token经过BERT得到的向量表示通常被用作当前的句子表示。除了这个特殊的[CLS] token，其余输入的单词类似篇章2.2的Transformer。BERT将一串单词作为输入，这些单词在多层encoder中不断向上流动，每一层都会经过 Self-Attention和前馈神经网络。
+接着看一下模型的输入和输出：BERT模型输入有一点特殊的地方是在一句话**最开始拼接了一个[CLS] token**，如下图所示。**这个特殊的[CLS] token经过BERT得到的向量表示通常被用作当前的句子表示**。除了这个特殊的[CLS] token，其余输入的单词类似篇章2.2的Transformer。BERT将一串单词作为输入，这些单词在多层encoder中不断向上流动，每一层都会经过 Self-Attention和前馈神经网络。
 
 ![模型输入](./assets/3-bert-input.png)图：模型输入
 
@@ -80,14 +80,16 @@ BERT输入的所有token经过BERT编码后，会在每个位置输出一个大�
 
 ## 预训练任务：Masked Language Model
 
-知道了模型输入、输出、Transformer结构，那么BERT是如何无监督进行训练的呢？如何得到有效的词、句子表示信息呢？以往的NLP预训练通常是基于语言模型进行的，比如给定语言模型的前3个词，让模型预测第4个词。但是，BERT是基于Masked language model进行预训练的：将输入文本序列的部分（15%）单词随机Mask掉，让BERT来预测这些被Mask的词语。如下图所示：
+知道了模型输入、输出、Transformer结构，那么BERT是如何无监督进行训练的呢？如何得到有效的词、句子表示信息呢？**以往的NLP预训练通常是基于语言模型进行的，比如给定语言模型的前3个词，让模型预测第4个词。**但是，**BERT是基于Masked language model进行预训练的：将输入文本序列的部分（15%）单词随机Mask掉，让BERT来预测这些被Mask的词语。**如下图所示：
 ![BERT mask](./assets/3-bert-mask.webp)图： BERT mask
 
 这种训练方式最早可以追溯到Word2Vec时代，典型的Word2Vec算法便是：基于词C两边的A、B和D、E词来预测出词C。
 
+注意，每个位置都需要去计算对应位置的token，即除了被mask的token，正常token也需要预测。
+
 ## 预训练任务：相邻句子判断
 
-除了masked language model，BERT在预训练时，还引入了一个新的任务：判断两个句子是否是相邻句子。如下图所示：输入是sentence A和sentence B，经过BERT编码之后，使用[CLS] token的向量表示来预测两个句子是否是相邻句子。
+**除了masked language model，BERT在预训练时，还引入了一个新的任务：判断两个句子是否是相邻句子。**如下图所示：输入是sentence A和sentence B，经过BERT编码之后，使用[CLS] token的向量表示来预测两个句子是否是相邻句子。
 
 ![2个句子任务](./assets/3-bert-2sent.webp)图： 2个句子任务
 
@@ -108,6 +110,8 @@ BERT论文展示了BERT在多种任务上的应用，如下图所示。可以用
 那么我们是使用最后一层的向量表示，还是前几层的，还是都使用呢？下图给出了一种试验结果：
 
 ![BERT特征选择](./assets/3-bert-fea.webp)图： BERT特征选择
+
+**结果显示对最后几层embedding拼接的效果最好。**
 
 ## 拓展阅读
 
