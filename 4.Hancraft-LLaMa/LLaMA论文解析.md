@@ -49,3 +49,15 @@ LLaMA基于transformer架构并利用几类改进，以下是与原始架构的�
 > Moreover, we also overlap the computation of activations and the communication between GPUs over the network (due to all_reduce operations) as much as possible.
 
 训练65b参数模型时，我们的代码在2048 A100 GPU和80GB RAM上处理大约380个token/秒/GPU。这意味着在包含1.4T token的数据集上进行训练大约需要21天。
+
+
+
+
+
+# 参考
+
+https://blog.csdn.net/weixin_44826203/article/details/129255185
+
+https://xumimi-ai.blog.csdn.net/article/details/132034312
+
+https://github.com/karpathy/nano-llama31/tree/master
