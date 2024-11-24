@@ -172,6 +172,34 @@ class PositionalEmbedding(nn.Module):
         return self.encoding[:seq_len, :]
 
 
+class LMheadModel(nn.Module):
+    
+    def __init__(self, config) -> None:
+        super(LMheadModel, self).__init__()
+        
+        self.vocab_size = config.vocab_size
+        self.lm_head = nn.Linear(config.n_emb, config.vocab_size)
+        
+    def forward(self, x, _y):
+        y = self.lm_head(x)
+        if _y is not None:
+            r"""
+            labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
+                Labels for language modeling. Note that the labels **are shifted** inside the model, i.e. you can set
+                `labels = input_ids` Indices are selected in `[-100, 0, ..., config.vocab_size]` All labels set to `-100`
+                are ignored (masked), the loss is only computed for labels in `[0, ..., config.vocab_size]`
+            """
+            _y = F.one_hot(_y, num_classes=self.vocab_size).float()
+            shift_labels = _y[..., 1:, :].contiguous()
+            shift_logits = y[..., :-1, :].contiguous()
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(shift_logits.view(-1, self.vocab_size), shift_labels.view(-1, self.vocab_size))
+        else:
+            loss = None
+
+        return y, loss
+    
+
 class GPT(nn.Module):
     
     def __init__(self, config) -> None:
@@ -181,14 +209,14 @@ class GPT(nn.Module):
         self.wpe = nn.Embedding(config.vocab_size, config.n_emb)
         self.masker = AttentionMasker(config)
         self.blocks = [Block(config) for _ in range(config.n_block)]
-        self.lm_head = nn.Linear(config.n_emb, config.vocab_size)
+        self.lm_head = LMheadModel(config)
         
-    def forward(self, x):
+    def forward(self, x, _y=None):
         x = self.wte(x) + self.wpe(x)
         mask = self.masker.get_casual_mask(x)
         for block in self.blocks:
             x = block(x, mask)
-        x = self.lm_head(x)
+        x = self.lm_head(x, _y)
         return x
         
         
@@ -200,5 +228,8 @@ if __name__ == '__main__':
     
     model = GPT(config)
     x = torch.ones((2,10),dtype=int)
-    print(model(x).shape)
+    _y = x
+    logit, loss = model(x)
+    print(logit.shape)
+    print(loss)
     
