@@ -24,11 +24,8 @@
 文档：
 
 1. 图解BERT
-
 2. 分词预处理
-
 3. WordPiece讲解
-
 
 ## 手撕GPT
 
@@ -46,11 +43,7 @@ GPT模型
 
 大模型简单推理
 
-
-
 参考：
-
-
 
 nanoGPT，代码：https://github.com/karpathy/nanoGPT.git
 
