@@ -24,11 +24,8 @@
 文档：
 
 1. 图解BERT
-
 2. 分词预处理
-
 3. WordPiece讲解
-
 
 ## 手撕GPT
 
@@ -40,17 +37,12 @@
 
 代码：
 
-BPE（Byte-Pair Encoding）分词算法
-
-GPT模型
-
-大模型简单推理
-
-
+1. BPE（Byte-Pair Encoding）分词算法
+1. GPT模型
+1. 大模型简单推理
+1. flash attention讲解
 
 参考：
-
-
 
 nanoGPT，代码：https://github.com/karpathy/nanoGPT.git
 
