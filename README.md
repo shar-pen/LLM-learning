@@ -69,4 +69,3 @@ VLLM
 
 https://github.com/liguodongiot/llm-action/
 
-btq test 
