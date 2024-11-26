@@ -38,9 +38,9 @@
 代码：
 
 1. BPE（Byte-Pair Encoding）分词算法
-1. GPT模型
-1. 大模型简单推理
-1. flash attention讲解
+2. GPT模型
+3. 大模型简单推理
+4. flash attention讲解
 
 参考：
 
@@ -56,6 +56,7 @@ llama3 implemented from scratch，代码：https://github.com/naklecha/llama3-fr
 
 计算全量微调占显存
 
+
 Stanford Alpaca: An Instruction-following LLaMA Model，代码： https://github.com/tatsu-lab/stanford_alpaca，运行教程：https://zhuanlan.zhihu.com/p/618321077
 
 ## 手撕LORA
@@ -67,3 +68,4 @@ LoRA/QLoRA论文解析
 VLLM
 
 https://github.com/liguodongiot/llm-action/
+
