@@ -19,7 +19,6 @@
   - 附加资料
   - 致谢
 
-
 在学习完 attention 后，我们知晓了attention为循环神经网络带来的优点。那么有没有一种神经网络结构直接基于attention构造，并且不再依赖RNN、LSTM或者CNN网络结构了呢？答案便是：Transformer。因此，我们将在本小节对Transformer所涉及的细节进行深入探讨。
 
 Transformer模型在2017年被google提出，直接基于Self-Attention结构，取代了之前NLP任务中常用的RNN神经网络结构，并在WMT2014 Englishto-German和WMT2014 English-to-French两个机器翻译任务上都取得了当时的SOTA。
@@ -32,7 +31,6 @@ Transformer模型在2017年被google提出，直接基于Self-Attention结构，
 图：transformer模型结构
 
 注释和引用说明：本文将通过总-分的方式对Transformer进行拆解和讲解，希望有助于帮助初学者理解Transformer模型结构。本文主要参考[illustrated-transformer](http://jalammar.github.io/illustrated-transformer)。
-
 
 ## Transformer宏观结构
 
@@ -111,9 +109,11 @@ Transformer最开始提出来解决机器翻译任务，因此可以看作是seq
 图：位置编码向量
 
 那么带有位置编码信息的向量到底遵循什么模式？原始论文中给出的设计表达式为：
+
 $$
-PE_{(pos,2i)} = sin(pos / 10000^{2i/d_{\text{model}}}) \\                                                                       PE_{(pos,2i+1)} = cos(pos / 10000^{2i/d_{\text{model}}}) 
+PE_{(pos,2i)} = sin(pos / 10000^{2i/d_{\text{model}}}) \\                                                                       PE_{(pos,2i+1)} = cos(pos / 10000^{2i/d_{\text{model}}})
 $$
+
 上面表达式中的$pos$代表词的位置，$d_{model}$代表位置向量的维度，$i \in [0, d_{model})$代表位置$d_{model}$维位置向量第$i$维。于是根据上述公式，我们可以得到第$pos$位置的$d_{model}$维位置向量。在下图中，我们画出了一种位置向量在第4、5、6、7维度、不同位置的的数值大小。横坐标表示位置下标，纵坐标表示数值大小。
 
 ![位置编码图示](./assets/2-2-pos-embedding.png)
@@ -138,7 +138,7 @@ $$
 
 下面来分析一下上图中Self-Attention层的具体机制。
 
-##### Self-Attention概览 
+##### Self-Attention概览
 
 假设我们想要翻译的句子是：
 
@@ -156,15 +156,17 @@ The animal didn't cross the street because it was too tired
 
 上图所示的*it*是一个真实的例子，是当Transformer在第5层编码器编码“it”时的状态，可视化之后显示*it*有一部分注意力集中在了“The animal”上，并且把这两个词的信息融合到了"it"中。
 
-##### Self-Attention细节 
+##### Self-Attention细节
 
-先通过一个简单的例子来理解一下：什么是“self-attention自注意力机制”？假设一句话包含两个单词：Thinking Machines。自注意力的一种理解是：Thinking-Thinking，Thinking-Machines，Machines-Thinking，Machines-Machines，共$2^2$种两两attention。那么具体如何计算呢？假设Thinking、Machines这两个单词经过词向量算法得到向量是$X_1, X_2$​：
+先通过一个简单的例子来理解一下：什么是“self-attention自注意力机制”？假设一句话包含两个单词：Thinking Machines。自注意力的一种理解是：Thinking-Thinking，Thinking-Machines，Machines-Thinking，Machines-Machines，共$2^2$种两两attention。那么具体如何计算呢？假设Thinking、Machines这两个单词经过词向量算法得到向量是$X_1, X_2$：
+
 $$
 1: q_1 = X_1 W^Q, q_2 = X_2 W^Q; k_1 = X_1 W^K, k_2 = X_2 W^K;v_1 = X_1 W^V, v_2 = X_2 W^V, W^Q, W^K, W^K \in \mathbb{R}^{d_x \times d_k}\\
 2-3: score_{11} = \frac{q_1 \cdot q_1}{\sqrt{d_k}} , score_{12} = \frac{q_1 \cdot q_2}{\sqrt{d_k}} ; score_{21} = \frac{q_2 \cdot q_1}{\sqrt{d_k}}, score_{22} = \frac{q_2 \cdot q_2}{\sqrt{d_k}}; \\
 4: score_{11} = \frac{e^{score_{11}}}{e^{score_{11}} + e^{score_{12}}},score_{12} = \frac{e^{score_{12}}}{e^{score_{11}} + e^{score_{12}}}; score_{21} = \frac{e^{score_{21}}}{e^{score_{21}} + e^{score_{22}}},score_{22} = \frac{e^{score_{22}}}{e^{score_{21}} + e^{score_{22}}} \\
 5-6: z_1 = v_1 \times score_{11} + v_2 \times score_{12}; z_2 = v_1 \times score_{21} + v_2 \times score_{22}
 $$
+
 下面，我们将上诉self-attention计算的6个步骤进行可视化。
 
 第1步：对输入编码器的词向量进行线性变换得到：Query向量: $q_1, q_2$，Key向量: $k_1, k_2$，Value向量: $v_1, v_2$。这3个向量是词向量分别和3个参数矩阵相乘得到的，而这个矩阵也是是模型要学习的参数。
@@ -201,12 +203,14 @@ Attention score是根据"*Thinking*" 对应的 Query 向量和其他位置的每
 
 ##### Self-Attention矩阵计算
 
-将self-attention计算6个步骤中的向量放一起，比如$X=[x_1;x_2]$​，便可以进行矩阵计算啦。下面，依旧按步骤展示self-attention的矩阵计算方法。
+将self-attention计算6个步骤中的向量放一起，比如$X=[x_1;x_2]$，便可以进行矩阵计算啦。下面，依旧按步骤展示self-attention的矩阵计算方法。
+
 $$
 X = [X_1;X_2] \\
 Q = X W^Q, K = X W^K, V=X W^V \\
 Z = softmax(\frac{QK^T}{\sqrt{d_k}}) V
 $$
+
 第1步：计算 Query，Key，Value 的矩阵。首先，我们把所有词向量放到一个矩阵X中，然后分别和3个权重矩阵$W^Q, W^K W^V$ 相乘，得到 Q，K，V 矩阵。矩阵X中的每一行，表示句子中的每一个词的词向量。Q，K，V 矩阵中的每一行表示 Query向量，Key向量，Value 向量，向量维度是$d_k$。
 
 ![](./assets/2-qkv-multi.png)图：QKV矩阵乘法
@@ -220,8 +224,8 @@ $$
 
 Transformer 的论文通过增加多头注意力机制（一组注意力称为一个 attention head），进一步完善了Self-Attention。这种机制从如下两个方面增强了attention层的能力：
 
-- **它扩展了模型关注不同位置的能力**。在上面的例子中，第一个位置的输出$z_1$​包含了句子中其他每个位置的很小一部分信息，但$z_1$​仅仅是单个向量，所以可能仅由第1个位置的信息主导了。而当我们翻译句子：`The animal didn’t cross the street because it was too tired`时，我们不仅希望模型关注到"it"本身，还希望模型关注到"The"和“animal”，甚至关注到"tired"。这时，多头注意力机制会有帮助。
-- **多头注意力机制赋予attention层多个“子表示空间”**。下面我们会看到，多头注意力机制会有多组$W^Q, W^K W^V$​ 的权重矩阵（在 Transformer 的论文中，使用了 8 组注意力),，因此可以将$X$​变换到更多种子空间进行表示。接下来我们也使用8组注意力头（attention heads））。每一组注意力的权重矩阵都是随机初始化的，但经过训练之后，每一组注意力的权重$W^Q, W^K W^V$​ 可以把输入的向量映射到一个对应的”子表示空间“。
+- **它扩展了模型关注不同位置的能力**。在上面的例子中，第一个位置的输出$z_1$包含了句子中其他每个位置的很小一部分信息，但$z_1$仅仅是单个向量，所以可能仅由第1个位置的信息主导了。而当我们翻译句子：`The animal didn’t cross the street because it was too tired`时，我们不仅希望模型关注到"it"本身，还希望模型关注到"The"和“animal”，甚至关注到"tired"。这时，多头注意力机制会有帮助。
+- **多头注意力机制赋予attention层多个“子表示空间”**。下面我们会看到，多头注意力机制会有多组$W^Q, W^K W^V$ 的权重矩阵（在 Transformer 的论文中，使用了 8 组注意力),，因此可以将$X$变换到更多种子空间进行表示。接下来我们也使用8组注意力头（attention heads））。每一组注意力的权重矩阵都是随机初始化的，但经过训练之后，每一组注意力的权重$W^Q, W^K W^V$ 可以把输入的向量映射到一个对应的”子表示空间“。
 
 ![多头注意力机制](./assets/2-multi-head.png)
 图：多头注意力机制
@@ -251,7 +255,7 @@ Transformer 的论文通过增加多头注意力机制（一组注意力称为�
 
 学习了多头注意力机制，让我们再来看下当我们前面提到的it例子，不同的attention heads （注意力头）对应的“it”attention了哪些内容。下图中的绿色和橙色线条分别表示2组不同的attentin heads：
 
-![`it`的attention](./assets/2-it-attention.webp)
+![it</code>的attention](./assets/2-it-attention.webp)
 图：`it`的attention
 
 当我们编码单词"it"时，其中一个 attention head （橙色注意力头）最关注的是"the animal"，另外一个绿色 attention head 关注的是"tired"。因此在某种意义上，"it"在模型中的表示，融合了"animal"和"tire"的部分表达。
@@ -433,6 +437,13 @@ Transformer训练的时候，需要将解码器的输出和label一同送入损�
 
 - Greedy decoding：由于模型每个时间步只产生一个输出，我们这样看待：模型是从概率分布中选择概率最大的词，并且丢弃其他词。这种方法叫做贪婪解码（greedy decoding）。
 - Beam search：每个时间步保留k个最高概率的输出词，然后在下一个时间步，根据上一个时间步保留的k个词来确定当前应该保留哪k个词。假设k=2，第一个位置概率最高的两个输出的词是”I“和”a“，这两个词都保留，然后根据第一个词计算第2个位置的词的概率分布，再取出第2个位置上2个概率最高的词。对于第3个位置和第4个位置，我们也重复这个过程。这种方法称为集束搜索(beam search)。
+
+## 参考
+
+* 基于transformers的自然语言处理(NLP)入门，https://github.com/datawhalechina/learn-nlp-with-transformers，包含了Transformer，bert，gpt的讲解
+* 序列模型之王 - Transfomer 全细节详解：https://blog.csdn.net/Kuo_Jun_Lin/article/details/114241287
+* 基于简单数据的英文文本翻译，代码： https://github.com/dt-3t/Transformer-en-to-cn.git，讲解： https://blog.csdn.net/qq_36396406/article/details/132384993
+* 基于transformers的自然语言处理(NLP)入门，代码： https://github.com/datawhalechina/learn-nlp-with-transformers.git
 
 ## 附加资料
 

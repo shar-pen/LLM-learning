@@ -13,12 +13,6 @@
 - 残差连接FFN
 - Encoder-Decoder实现
 
-参考：
-
-1. 序列模型之王 - Transfomer 全细节详解：https://blog.csdn.net/Kuo_Jun_Lin/article/details/114241287
-2. 基于简单数据的英文文本翻译，代码： https://github.com/dt-3t/Transformer-en-to-cn.git，讲解： https://blog.csdn.net/qq_36396406/article/details/132384993
-3. 基于transformers的自然语言处理(NLP)入门，代码： https://github.com/datawhalechina/learn-nlp-with-transformers.git
-
 ## 手撕BERT
 
 文档：
@@ -42,20 +36,22 @@
 3. 大模型简单推理
 4. flash attention讲解
 
-参考：
-
-nanoGPT，代码：https://github.com/karpathy/nanoGPT.git
-
 ## 手撕LLAMA
 
-https://blog.csdn.net/qq_35054222/article/details/139123494
+文档：
 
-llama3 implemented from scratch，代码：https://github.com/naklecha/llama3-from-scratch
+LLAMA大致讲解
+
+RMS归一化
+
+SwiGLU激活函数
+
+旋转式位置编码
+
 
 ## 手撕Alpaca
 
 计算全量微调占显存
-
 
 Stanford Alpaca: An Instruction-following LLaMA Model，代码： https://github.com/tatsu-lab/stanford_alpaca，运行教程：https://zhuanlan.zhihu.com/p/618321077
 
@@ -68,4 +64,3 @@ LoRA/QLoRA论文解析
 VLLM
 
 https://github.com/liguodongiot/llm-action/
-
