@@ -41,7 +41,6 @@ OpenAI提出的GPT-2模型(https://openai.com/blog/better-language-models/)能�
 - 自编码（auto-encoder）语言模型
 - 自回归（auto-regressive）语言模型
 
-
 先看自编码语言模型。
 自编码语言模型典型代表就是篇章2.3所描述的BERT。如下图所示，自编码语言模型通过随机Mask输入的部分单词，然后预训练的目标是预测被Mask的单词，不仅可以融入上文信息，还可以自然的融入下文信息。
 
@@ -54,7 +53,7 @@ OpenAI提出的GPT-2模型(https://openai.com/blog/better-language-models/)能�
 
 接着我们来看看什么是常用的自回归（auto-regressive）语言模型：**语言模型根据输入句子的一部分文本来预测下一个词。日常生活中最常见的语言模型就是输入法提示，它可以根据你输入的内容，提示下一个单词。**
 
-![词之间的关系](./assets/4-word2vec.webp) 
+![词之间的关系](./assets/4-word2vec.webp)
 
 图：输入提示
 
@@ -77,7 +76,6 @@ GPT-2属于自回归语言模型，相比于手机app上的输入提示，GPT-2�
 ![gpt-bert](./assets/4-gpt-bert.webp)图：GPT、BERT、Transformer-XL
 
 ![gpt区分](./assets/4-gpt-his2.webp)图：层数越来越多的GPT2模型
-
 
 ### Transformer进化
 
@@ -122,18 +120,15 @@ GPT-2能够处理1024 个token。每个token沿着自己的路径经过所有的
 
 在漫无目的情况下，我们可以简单地给它输入一个特殊的\<s>初始token，让它开始生成单词。如下图所示：
 
-
 ![拆解GPT2初始token](./assets/4-gpt2-start.webp)图：GPT2初始token
 
 由于模型只有一个输入，因此只有一条活跃路径。\<s> token在所有Decoder层中依次被处理，然后沿着该路径生成一个向量。根据这个向量和模型的词汇表给所有可能的词计算出一个分数。在下图的例子中，我们选择了概率最高的 the。下一步，我们把第一步的输出添加到我们的输入序列，然后让模型做下一个预测。
-
 
 ![拆解GPT2](./assets/4-gpt2-the.gif)动态图：拆解GPT2
 
 **请注意，第二条路径是此计算中唯一活动的路径。GPT-2 的每一层都保留了它对第一个 token所编码的信息，而且会在处理第二个 token 时直接使用它：GPT-2 不会根据第2个 token 重新计算第一个 token**。
 
 不断重复上述步骤，就可以生成更多的单词了。
-
 
 ### GPT2详解
 
@@ -173,8 +168,7 @@ Decoder中包含了Masked Self-Attention，由于Mask的操作可以独立进行
 
 self-attention所做的事情是：它通过对句子片段中每个词的相关性打分，并将这些词的表示向量根据相关性加权求和，从而让模型能够将词和其他相关词向量的信息融合起来。
 
-举个例子，如下图所示，最顶层的Decoder中的 Self Attention 层在处理单词 `it` 的时候关注到` a robot`。于是self-attention传递给后续神经网络的`it` 向量，是3个单词对应的向量和它们各自分数的加权和。
-
+举个例子，如下图所示，最顶层的Decoder中的 Self Attention 层在处理单词 `it` 的时候关注到 ` a robot`。于是self-attention传递给后续神经网络的 `it` 向量，是3个单词对应的向量和它们各自分数的加权和。
 
 ![it的attention](./assets/4-gpt-it.webp)图：it的attention
 
@@ -274,7 +268,6 @@ Self-Attention 主要通过 3 个步骤来实现：
 
 ![汇总](./assets/4-att-34.webp)图：汇总
 
-
 ### 图解Masked Self-attention
 
 现在，我们已经了解了 Transformer 的 Self Attention 步骤，现在让我们继续研究 masked Self Attention。Masked Self Attention 和 Self Attention 是相同的，除了第 2 个步骤。
@@ -342,13 +335,11 @@ Self-Attention 将它的输入乘以权重矩阵（并添加一个 bias 向量�
 这个相乘会得到一个向量，这个向量是 Query、Key 和 Value 向量的拼接。
 ![处理it](./assets/4-gpt2-it2.webp)图：Query、Key 和 Value
 
-
 得到Query、Key和Value向量之后，我们将其拆分multi-head，如下图所示。其实本质上就是将一个大向量拆分为多个小向量。
 
 ![处理it](./assets/4-gpt2-it3.png)图：multi head
 
 为了更好的理解multi head，我们将其进行如下展示：
-
 
 ![处理it](./assets/4-gpt2-it4.webp)图：multi head
 
@@ -392,7 +383,6 @@ multi head对应得到多个加权和向量，我们将他们都再次拼接起�
 
 全连接神经网络是用于处理 Self Attention 层的输出，这个输出的表示包含了合适的上下文。全连接神经网络由两层组成。第一层是模型大小的 4 倍（由于 GPT-2 small 是 768，因此这个网络会有3072个神经元）。
 
-
 ![全连接层](./assets/4-full.gif)动态图：全连接层
 
 没有展示 bias 向量
@@ -410,7 +400,6 @@ multi head对应得到多个加权和向量，我们将他们都再次拼接起�
 ![总结](./assets/4-sum.png)图：汇总
 
 每个模块都有它自己的权重。另一方面，模型只有一个 token embedding 矩阵和一个位置编码矩阵。
-
 
 ![总结](./assets/4-sum1.png)图：总结
 
@@ -456,7 +445,6 @@ Music Transformer(https://magenta.tensorflow.org/music-transformer) 论文使用
 
 ![音乐生成](./assets/4-music1.png)图：音乐生成
 
-
 这个输入系列的 one-hot 向量表示如下：
 
 ![音乐生成](./assets/4-music2.png)图：音乐生成
@@ -467,12 +455,14 @@ Music Transformer(https://magenta.tensorflow.org/music-transformer) 论文使用
 
 这段音乐有一个反复出现的三角形轮廓。Query 矩阵位于后面的一个峰值，它注意到前面所有峰值的高音符，以知道音乐的开头。这幅图展示了一个 Query 向量（所有 attention 线的来源）和前面被关注的记忆（那些受到更大的softmax 概率的高亮音符）。attention 线的颜色对应不同的 attention heads，宽度对应于 softmax 概率的权重。
 
+## 参考
+
+nanoGPT，代码：https://github.com/karpathy/nanoGPT.git
+
 ## 总结
 
 现在，我们结束了 GPT-2 的旅程，以及对其父模型（只有 Decoder 的 Transformer）的探索。我希望你看完这篇文章后，能对 Self Attention 有一个更好的理解，也希望你能对 Transformer 内部发生的事情有更多的理解。
 
-
 ## 致谢
 
 主要由哈尔滨工业大学张贤同学翻译（经过原作者授权）撰写，由多多同学组织和整理。
-
