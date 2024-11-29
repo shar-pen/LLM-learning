@@ -5,6 +5,7 @@ from collections import defaultdict
 class BPE_Tokenizer:
 
     def __init__(self, pre_tokenizer) -> None:
+        # pre_tokenizer是用于切断句子
         self.pre_tokenizer = pre_tokenizer
         self.vocab = None
         self.merge_rule = None
@@ -12,7 +13,7 @@ class BPE_Tokenizer:
 
     def compute_word_freq(self, corpus):
         """ 
-        split sentence into words and compute the occurance freq of each word
+        将句子分割成单词，并计算每个单词的出现频率
         return dict(word, freq)
         """
         word2freq = defaultdict(int)
@@ -27,7 +28,7 @@ class BPE_Tokenizer:
     
     def split_words(self, words):
         """ 
-        split word into its splits
+        从直接分词中获取首字母
         return dict(word, splits)
         """
         word2split = {}
@@ -35,9 +36,8 @@ class BPE_Tokenizer:
             tmp = []
             for i in range(len(word)):
                 """
-                because GPT preprocess distinguish the first letter and other letter of a word by the 'Ġ', 
-                which is the blank symbol, so we don't have to add ##
-                alter 'merge_pair' function BTW
+                因为 GPT 预处理时会用'Ġ'(应该是空白符号)来区分单词的首字母和其他字母, 因此我们不必添加 ##
+                BTW也改变 “merge_pair ”函数，直接拼接，不需要考虑 ##
                 """
                 # if i==0:
                 #     tmp.append(word[i])
@@ -49,7 +49,7 @@ class BPE_Tokenizer:
     
     def get_alphabet_from_words(self, words):
         """ 
-        get initial alphabet from directly sperating words
+        从单词的分词中获得初始字母
         return list[str]
         """
         alphabet = set()
@@ -61,7 +61,7 @@ class BPE_Tokenizer:
     
     def get_alphabet_from_splits(self, splits):
         """ 
-        get initial alphabet from using words' splits
+        计算这些词语中每一对的频率
         return list[str]
         """
         alphabet = set()
@@ -74,7 +74,7 @@ class BPE_Tokenizer:
 
     def compute_pair_freq(self, word2split, word2freq):
         """ 
-        compute the freq of each pair in these words
+        计算这些词语中每一对的频率
         return dict[pair, int]
         """
         pair2freq = defaultdict(int)
@@ -91,7 +91,7 @@ class BPE_Tokenizer:
 
     def find_most_frequent_pair(self, pair2freq):
         """ 
-        find the pair with the biggest frequence
+        找出频率最大的一对
         return pair, int
         """
         assert len(pair2freq) >= 1
@@ -106,7 +106,7 @@ class BPE_Tokenizer:
 
     def merge_pair(self, pair):
         """ 
-        merge two tokens, '##' is considered
+        合并两个标记，暂时不考虑“##”
         return str
         """
         # return pair[0] + pair[1][2:]
@@ -114,7 +114,7 @@ class BPE_Tokenizer:
     
     def update_splits(self, pair, word2split, new_byte=None):
         """ 
-        update the splits of words according to one rule of a specific pair of tokens
+        根据一条特定词对的规则更新分词
         return dict(word, splits)
         """
         if new_byte is None:
@@ -157,7 +157,7 @@ class BPE_Tokenizer:
 
     def tokenize(self, text):
         """ 
-        just like the loop above
+        类似上面的train，遍历每一个合并规则，由于低级规则在前，所以合并不会有啥问题，都会合并为高级词汇
         """
         if self.merge_rule is None:
             raise AttributeError(name="You haven't train it.")
