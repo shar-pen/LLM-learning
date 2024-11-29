@@ -26,6 +26,14 @@ LLM通常在参数量提升到一定程度后出现一些奇特的特性，如Fe
 
 ## 架构
 
+
+
+![image](./assets/llama.png)
+
+
+
+<img src="./assets/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3b6fab4d-7825-47ec-a59e-979d9dfa0384_1256x938.png" alt="post norm vs pre norm" style="zoom:50%;" />
+
 LLaMA基于transformer架构并利用几类改进，以下是与原始架构的主要区别，以及我们找到这种变化的灵感的地方(括号内):
 
 - **Pre-normalization [GPT3].** 为了提高训练的稳定性，我们对每个Transformer sub-layer的输入进行归一化，而不是对输出进行归一化。LLaMA使用了RMSNorm归一化函数。
@@ -55,7 +63,6 @@ LLaMA基于transformer架构并利用几类改进，以下是与原始架构的�
 - https://github.com/karpathy/nano-llama31/tree/master
 - https://github.com/naklecha/llama3-from-scratch
 - https://github.com/Lightning-AI/lit-llama
-
 
 # 参考
 

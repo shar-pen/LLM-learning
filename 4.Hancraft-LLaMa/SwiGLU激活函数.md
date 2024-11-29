@@ -34,7 +34,7 @@ Swish激活函数的形式为：
 
 <img src="./assets/image-20241126212520107.png" alt="image-20241126212520107" style="zoom:67%;" />
 
-其中 $\sigma(x)$ 是Sigmoid函数；$\beta$ 是一个可学习的参数。
+其中 $\sigma(x)$ 是Sigmoid函数（$x\sigma(x)$在python中是silu函数）；$\beta$ 是一个可学习的参数。
 
 可以通过下面的代码画出Swish激活函数在不同参数 $\beta$ 下的图像：
 
