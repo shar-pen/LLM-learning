@@ -25,6 +25,46 @@ class LLaMaConfig:
     prob_dropout:float=0.1
 
 
+# 旋转位置编码
+
+def precompute_freqs_cis(dim: int, seq_len: int, theta: float = 10000.0):
+    # dim应该等同于head dim
+    # 计算词向量元素两两分组之后，每组元素对应的旋转角度
+    angel_split_num = dim // 2
+    angel_splits = torch.arange(0, angel_split_num).float() / angel_split_num
+    freqs = 1.0 / (theta ** angel_splits)
+    # 生成 token 序列索引 t = [0, 1,..., seq_len-1]
+    t = torch.arange(seq_len, device=freqs.device)
+    # freqs.shape = [seq_len, dim // 2] 
+    freqs = torch.outer(t, freqs).float()
+    # 根据偏转角度转换为复数
+    # 假设 freqs = [x, y] 则 freqs_cis = [cos(x) + sin(x)i, cos(y) + sin(y)i]
+    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)
+    # freqs_cis is (seq_len, head_dim/2, 2), e.g. (8, 64, 2)
+    freqs_cis_real_and_imag = torch.stack([freqs_cis.real, freqs_cis.imag], dim=-1)
+    return freqs_cis_real_and_imag
+
+
+def apply_rope(x, freqs_cis_real_and_imag):
+    # QKV shape (batch_size, num_q_heads, seq_len, head_dim)
+    # freqs_cis is (seq_len, head_dim/2, 2)
+    # QKV shape (batch_size, num_q_heads, seq_len, head_dim/2, 2)
+    x = torch.reshape(x, (*x.shape[:-1], -1, 2))
+
+    y = torch.stack(
+        [
+            # 这是 q_0 * cos - q_1 * sin
+            x[..., 0] * freqs_cis_real_and_imag[..., 0] - x[..., 1] * freqs_cis_real_and_imag[..., 1],
+            # 这是 q_1 * cos + q_0 * sin
+            x[..., 1] * freqs_cis_real_and_imag[..., 0] + x[..., 0] * freqs_cis_real_and_imag[..., 1],
+        ],
+        -1,
+    )
+    y = y.flatten(start_dim=3)
+    return y
+
+
+
 class RMS_Norm(nn.Module):
     """
     RMS归一化,应当在先归一化再过子层
@@ -93,6 +133,7 @@ class GroupQueryAttention(nn.Module):
                 query:torch.tensor, 
                 key:torch.tensor, 
                 value:torch.tensor, 
+                freqs_cis_real_and_imag:torch.tensor, 
                 mask:torch.tensor=None
                 ):
         assert query.shape == key.shape == value.shape
@@ -105,18 +146,23 @@ class GroupQueryAttention(nn.Module):
         # print(Q.shape, K.shape, V.shape)
 
         # 拆分出头
+        # Q shape (batch_size, seq_len, num_q_heads, head_dim)
+        # KV shape (batch_size, seq_len, num_kv_heads, head_dim)
         Q = torch.reshape(Q, (batch_size, seq_len, self.num_q_heads, self.head_dim))
         K = torch.reshape(K, (batch_size, seq_len, self.num_kv_heads, self.head_dim))
         V = torch.reshape(V, (batch_size, seq_len, self.num_kv_heads, self.head_dim))
         # print(Q.shape, K.shape, V.shape)
 
         # 翻转 head和seq两个维度
+        # Q shape (batch_size, num_q_heads, seq_len, head_dim)
+        # KV shape (batch_size, num_kv_heads, seq_len, head_dim)
         Q = Q.transpose(1,2)
         K = K.transpose(1,2)
         V = V.transpose(1,2)
         # print(Q.shape, K.shape, V.shape)
 
         # 复制k和v的头，用repeat_interleave而不是repeat
+        # QKV shape (batch_size, num_q_heads, seq_len, head_dim)
         K = K.repeat_interleave(self.num_groups, dim=1)
         V = V.repeat_interleave(self.num_groups, dim=1)
         # print(Q.shape, K.shape, V.shape)
@@ -144,20 +190,20 @@ class LLaMaBlock(nn.Module):
     def __init__(self, config:LLaMaConfig) -> None:
         super(LLaMaBlock, self).__init__()
 
+        self.norm_pre_attention = RMS_Norm(config)
         self.attention = GroupQueryAttention(config)
-        self.norm_1 = RMS_Norm(config)
+        self.norm_pre_ffn = RMS_Norm(config)
         self.ffn = FeedForwardNet(config)
-        self.norm_2 = RMS_Norm(config)
 
-    def forward(self, x):
+    def forward(self, x, precompute_freqs_cis, mask):
 
         _x = x
-        x = self.norm_1(x)
-        x = self.attention(x, x, x)
+        x = self.norm_pre_attention(x)
+        x = self.attention(x, x, x, precompute_freqs_cis, mask)
         x = _x + x
 
         _x = x
-        x = self.norm_2(x)
+        x = self.norm_pre_ffn(x)
         x = self.ffn(x)
         x = _x + x
 
@@ -169,7 +215,7 @@ class LLaMaHeadNet(nn.Module):
     head
     """
     def __init__(self, config:LLaMaConfig) -> None:
-        super(FeedForwardNet, self).__init__()
+        super(LLaMaHeadNet, self).__init__()
 
         self.net = nn.Sequential(
             RMS_Norm(config),
@@ -184,31 +230,41 @@ class LLaMaHeadNet(nn.Module):
 class LLaMa(nn.Module):
 
     def __init__(self, config:LLaMaConfig) -> None:
-        super(FeedForwardNet, self).__init__()
+        super(LLaMa, self).__init__()
 
         self.tok_emb = nn.Embedding(config.vocab_size, config.embed_dim)
-        self.blocks = [LLaMaBlock(config) for _ in range(config.num_blocks)]
+        self.precompute_freqs_cis = precompute_freqs_cis(config.embed_dim//config.num_attention_heads, config.max_position_embeddings)
+        self.blocks = nn.ModuleList(LLaMaBlock(config) for _ in range(config.num_blocks))
         self.head = LLaMaHeadNet(config)
 
-    def forward(self, x):
+    def forward(self, x:torch.tensor, mask:torch.tensor=None):
+        
+        causal_mask = torch.ones((x.shape[0], x.shape[1], x.shape[1]), dtype=int)
+        causal_mask = torch .tril(causal_mask)
+        if mask is not None:
+            assert x.shape[:2] == mask.shape
+            padding_mask = mask.unsqueeze(dim=1)
+            padding_mask = padding_mask.repeat(1,mask.shape[-1],1)
+            causal_mask = causal_mask & padding_mask
+        # 扩展维度对应head那一维
+        causal_mask = causal_mask.unsqueeze(dim=1)
+        # print(causal_mask)
         x = self.tok_emb(x)
         for block in self.blocks:
-            x = block(x)
+            x = block(x, self.precompute_freqs_cis, causal_mask)
         x = self.head(x)
         return x
         
 
-# class 
-
 if __name__ == '__main__':
 
     batch_size = 2
-    config = LLaMaConfig()
+    config = LLaMaConfig(num_blocks=2)
+    print(config)
 
-    x = torch.ones((batch_size, 10, config.embed_dim), dtype=torch.float32)
+    x = torch.ones((batch_size, 10), dtype=torch.int)
+    mask = torch.tensor([[1]*9+[0], [1]*5+[0]*5])
     print(x.shape)
-    # logger.debug(f'input shape: {x.shape}')
-    # model = GroupQueryAttention(config)
-    model = LLaMaBlock(config)
-    y = model(x)
+    model = LLaMa(config)
+    y = model(x, mask)
     print(y.shape)
