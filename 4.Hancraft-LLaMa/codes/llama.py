@@ -15,8 +15,8 @@ class LLaMaConfig:
     intermediate_size:int=14336
     max_position_embeddings:int=8192
     num_attention_heads:int=32
-    num_blocks:int=32
     num_key_value_heads:int=8
+    num_blocks:int=32
     rms_norm_eps:float=1e-5
     vocab_size:int=128000 # this param should be equal to tokenizer.vocab_size
 
@@ -39,17 +39,25 @@ def precompute_freqs_cis(dim: int, seq_len: int, theta: float = 10000.0):
     freqs = torch.outer(t, freqs).float()
     # 根据偏转角度转换为复数
     # 假设 freqs = [x, y] 则 freqs_cis = [cos(x) + sin(x)i, cos(y) + sin(y)i]
-    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)
-    # freqs_cis is (seq_len, head_dim/2, 2), e.g. (8, 64, 2)
-    freqs_cis_real_and_imag = torch.stack([freqs_cis.real, freqs_cis.imag], dim=-1)
+    # freqs_cis = torch.polar(torch.ones_like(freqs), freqs)
+    # # freqs_cis is (seq_len, head_dim/2, 2), e.g. (8, 64, 2)
+    # freqs_cis_real_and_imag = torch.stack([freqs_cis.real, freqs_cis.imag], dim=-1)
+    freqs_cis_real = freqs.cos()
+    freqs_cis_imag = freqs.sin()
+    freqs_cis_real_and_imag = torch.stack([freqs_cis_real, freqs_cis_imag], dim=-1)
     return freqs_cis_real_and_imag
 
 
 def apply_rope(x, freqs_cis_real_and_imag):
     # QKV shape (batch_size, num_q_heads, seq_len, head_dim)
-    # freqs_cis is (seq_len, head_dim/2, 2)
     # QKV shape (batch_size, num_q_heads, seq_len, head_dim/2, 2)
     x = torch.reshape(x, (*x.shape[:-1], -1, 2))
+    
+    # freqs_cis is (max_len, head_dim/2, 2)
+    # truncate to support variable sizes
+    T = x.size(-3)
+    freqs_cis_real_and_imag = freqs_cis_real_and_imag[:T]
+    
 
     y = torch.stack(
         [
@@ -166,6 +174,10 @@ class GroupQueryAttention(nn.Module):
         K = K.repeat_interleave(self.num_groups, dim=1)
         V = V.repeat_interleave(self.num_groups, dim=1)
         # print(Q.shape, K.shape, V.shape)
+        
+        # 应用旋转位置编码
+        Q = apply_rope(Q, freqs_cis_real_and_imag)
+        K = apply_rope(K, freqs_cis_real_and_imag)
 
         # 之后就和正常的MHA一样
         atten_score = Q @ K.transpose(-1,-2) / math.sqrt(self.head_dim)
@@ -240,7 +252,7 @@ class LLaMa(nn.Module):
     def forward(self, x:torch.tensor, mask:torch.tensor=None):
         
         causal_mask = torch.ones((x.shape[0], x.shape[1], x.shape[1]), dtype=int)
-        causal_mask = torch .tril(causal_mask)
+        causal_mask = torch.tril(causal_mask).to(x.device)
         if mask is not None:
             assert x.shape[:2] == mask.shape
             padding_mask = mask.unsqueeze(dim=1)
@@ -251,7 +263,7 @@ class LLaMa(nn.Module):
         # print(causal_mask)
         x = self.tok_emb(x)
         for block in self.blocks:
-            x = block(x, self.precompute_freqs_cis, causal_mask)
+            x = block(x, self.precompute_freqs_cis.to(x.device), causal_mask)
         x = self.head(x)
         return x
         
@@ -259,12 +271,20 @@ class LLaMa(nn.Module):
 if __name__ == '__main__':
 
     batch_size = 2
-    config = LLaMaConfig(num_blocks=2)
+    config = LLaMaConfig(
+        embed_dim=1024,
+        intermediate_size=1024*4,
+        max_position_embeddings=1024,
+        num_attention_heads=16,
+        num_key_value_heads=4,
+        num_blocks=2,
+        vocab_size=5000,  # verify the tokenizer has the same vocab szie
+    )
     print(config)
 
-    x = torch.ones((batch_size, 10), dtype=torch.int)
-    mask = torch.tensor([[1]*9+[0], [1]*5+[0]*5])
+    x = torch.ones((batch_size, 10), dtype=torch.int).to('cuda')
+    mask = torch.tensor([[1]*9+[0], [1]*5+[0]*5]).to('cuda')
     print(x.shape)
-    model = LLaMa(config)
+    model = LLaMa(config).to('cuda')
     y = model(x, mask)
     print(y.shape)

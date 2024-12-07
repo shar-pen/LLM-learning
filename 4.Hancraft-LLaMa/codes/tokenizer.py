@@ -1,14 +1,17 @@
 import torch.nn as nn
 import torch
+import json
+from tqdm import tqdm
 from collections import defaultdict
 
 class BPE_Tokenizer:
 
     def __init__(self, pre_tokenizer) -> None:
-        # pre_tokenizer是用于切断句子
+        # pre_tokenizer是用于切断句子，懒得自己实现了
         self.pre_tokenizer = pre_tokenizer
         self.vocab = None
         self.merge_rule = None
+        self.vocab2id = None
         pass
 
     def compute_word_freq(self, corpus):
@@ -132,30 +135,33 @@ class BPE_Tokenizer:
                 word2split[word] = split
         return word2split
 
-    def train(self, corpus, vocab_size, special_tokens=['<eos>']):
+    def train(self, corpus, vocab_size, special_tokens=['<eos>', '<pad>', '<unk>']):
         corpus = [sentence.lower() for sentence in corpus]
         word2freq = self.compute_word_freq(corpus)
         alphabet = self.get_alphabet_from_words(word2freq.keys())
         word2split = self.split_words(word2freq.keys())
         alphabet = self.get_alphabet_from_splits(word2split.values())
         vocab = special_tokens + list(alphabet)
-        print(vocab)
+        # print(vocab)
         merge_rule = {}
-        while len(vocab) < vocab_size:
-            # get the pair freq and the biggest
-            pair2freq = self.compute_pair_freq(word2split, word2freq)
-            pair, freq = self.find_most_frequent_pair(pair2freq)
-            # merge rule is kept for faster tokenization
-            merge_rule[pair] = self.merge_pair(pair)
-            vocab.append(self.merge_pair(pair))
-            # update splits according to the new pair rule
-            word2split = self.update_splits(pair, word2split)
-        print(vocab)
+        with tqdm(initial=len(vocab), total=vocab_size, desc="Building Vocabulary") as pbar:
+            while len(vocab) < vocab_size:
+                # get the pair freq and the biggest
+                pair2freq = self.compute_pair_freq(word2split, word2freq)
+                pair, freq = self.find_most_frequent_pair(pair2freq)
+                # merge rule is kept for faster tokenization
+                merge_rule[pair] = self.merge_pair(pair)
+                vocab.append(self.merge_pair(pair))
+                # update splits according to the new pair rule
+                word2split = self.update_splits(pair, word2split)
+                pbar.update(1)
+        # print(vocab)
         self.vocab = vocab
         self.merge_rule = merge_rule
+        self.vocab2id = {word:index for index, word in enumerate(self.vocab)}
 
 
-    def tokenize(self, text):
+    def split_and_merge(self, text):
         """ 
         类似上面的train，遍历每一个合并规则，由于低级规则在前，所以合并不会有啥问题，都会合并为高级词汇
         """
@@ -170,6 +176,27 @@ class BPE_Tokenizer:
         tokenized_words = sum([word2split[word] for word in words], [])
         return tokenized_words
     
+    def tokenize(self, text):
+        tokenized_words = self.split_and_merge(text)
+        ids = [self.vocab2id[word] if word in self.vocab2id else self.vocab2id['<unk>'] for word in tokenized_words]
+        return ids
+    
+    def save(self, save_path):
+        converted_data = {str(key): value for key, value in self.merge_rule.items()}
+        dict2save = {
+            'vocab2id': self.vocab2id,
+            'merge_rule': converted_data
+        }
+        with open(save_path, 'w') as file:
+            json.dump(dict2save, file, ensure_ascii=False)
+            
+    def load(self, load_path):
+        with open(load_path, 'r') as file:
+            dict2load = json.load(file)
+            self.vocab2id = dict2load['vocab2id']
+            self.vocab = self.vocab2id.keys()
+            self.merge_rule = {eval(key): value for key, value in dict2load['merge_rule'].items()}
+        
 
 if __name__ == '__main__':
 
@@ -185,4 +212,4 @@ if __name__ == '__main__':
     pre_tokenizer = tokenizer.backend_tokenizer.pre_tokenizer
     bpt = BPE_Tokenizer(pre_tokenizer)
     bpt.train(corpus, 50)
-    print(bpt.tokenize("This is not a token."))
+    print(bpt.split_and_merge("This is not a token."))

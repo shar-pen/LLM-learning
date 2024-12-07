@@ -90,6 +90,7 @@ class FeedForward(nn.Module):
         # w1(x) -> (batch_size, seq_len, intermediate_size)
         # w3(x) -> (batch_size, seq_len, intermediate_size)
         # w2(*) -> (batch_size, seq_len, hidden_size)
+        # F.silu(self.w1(x)) 作为门值
     	return self.w2(F.silu(self.w1(x)) * self.w3(x))
 
 ```
