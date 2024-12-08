@@ -7,11 +7,11 @@
 
 代码：
 
-- 注意力Attention原理和实现
-- token 和 position Embedding
-- LayerNorm
-- 残差连接FFN
-- Encoder-Decoder实现
+1. 注意力Attention原理和实现
+2. token 和 position Embedding
+3. LayerNorm
+4. 残差连接FFN
+5. Encoder-Decoder实现
 
 ## 手撕BERT
 
@@ -28,26 +28,33 @@
 1. 图解GPT
 2. BPE讲解
 3. FlashAttention
+4. flash attention讲解
 
 代码：
 
 1. BPE（Byte-Pair Encoding）分词算法
 2. GPT模型
 3. 大模型简单推理
-4. flash attention讲解
 
 ## 手撕LLAMA
 
 文档：
 
-LLAMA大致讲解
+1. LLAMA大致讲解
 
-RMS归一化
+2. RMS归一化
 
-SwiGLU激活函数
+3. SwiGLU激活函数
 
-旋转式位置编码
+4. 旋转式位置编码
+5. 多查询注意力+分组查询注意力
+6. KV-Cache推理加速
 
+文档：
+
+1. BPE（Byte-Pair Encoding）分词算法-封装为类的较完整版
+2. llama模型实现
+3. 简单trainer
 
 ## 手撕Alpaca
 

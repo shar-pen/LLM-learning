@@ -84,6 +84,15 @@ if __name__ == '__main__':
     print("RMSNorm输出数据: \n", output)
 ```
 
+## 总结
+
+- 不依赖均值: 与LayerNorm不同，RMSNorm仅使用RMS而不依赖于均值来进行归一化，这使得其**计算更简单、代价更低**。
+
+- 计算效率: 由于不计算均值，RMSNorm的计算复杂度较低，尤其是在高维度输入的情况下，RMSNorm相比LayerNorm**更为高效**。
+
+- 适用于各种网络结构: RMSNorm可以应用于各种神经网络结构，如Transformer等，能够提高模型的训练稳定性（没法解释，实验结果表面就是更好）。
+
+
 ## 参考
 
 - https://blog.csdn.net/qq_43592352/article/details/137399273
