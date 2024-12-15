@@ -1,8 +1,12 @@
-## **Transformer** **简介**
+## Naive Attention
 
 Transformer 包括编码器和解码器两部分，由于当前主流的大语言模型几乎都基于只含解码器而不含编码器的仅解码器 (decoder-only) 模型，因此此处主要介绍仅解码器模型中的 Transformer 解码器，该解码器通过多个解码器层堆叠而成，每层包含自注意力层、前馈神经网络、层归一化、残差连接等组件。
 
 其中，自注意力层接收一个特征序列作为输入，并将该序列输入作为查询 (Query, 下文简称 Q)、键 (Key, 下文简称 K) 和值 (Value, 下文简称 V)，使用缩放点积 (Scaled-dot Production) 来计算 Q 和 K 之间的注意力权重矩阵，然后再通过注意力权重和 V 来计算自注意力层的输出。
+
+![image-20241215190001358](./assets/image-20241215190001358.png)
+
+![在这里插入图片描述](./assets/76fcd1a64edab2999ead83923b88fe80.png)
 
 自注意力层的主体代码如下。简单起见，此处省略自注意力层中的 Q、K、V 各自的线性映射、Dropout、多头注意力、掩码机制等内容。
 
@@ -69,6 +73,24 @@ if __name__ == '__main__':
 
 我们可以通过 PyTorch 库所给的 F.scaled_dot_production 函数来验证 self_attention 函数的正确性。单元测试的结果此处略过。
 
+## **safe softmax**
+
+由于在实际的计算中，指数计算exp存在不稳定性，比如数值容易溢出，超过一定范围计算精度会下降等问题。因此在实际使用中，往往用safe softmax更好，safe softmax的计算是在navie softmax的基础之上将数组x[1…n]每个元素**减去数组的最大值max之后，再做softmax**。
+
+![image-20241215190042544](./assets/image-20241215190042544.png)
+
+![在这里插入图片描述](./assets/871d8933ee64c43e4b00fa9a39a826b4.png)
+
+## **online softmax**
+
+是在**safe softmax**的基础上做的改进
+
+![在这里插入图片描述](./assets/9f1f3494969dc0db9848ed0231e150c4.png)
+
+其中 $d_{j-1}d$ 表示数组x[1…n]的前j-1个指数和，它的指数和是基于前j-1个元素的最大值 $m_{j-1}$来算的的，注意哦，$m_{j-1}$ 并不是全局的最大值，同理 $m_{j}$表示前j个元素的最大值，那么它跟 $m_{j-1}$ 的区别在于，它有可能等于$m_{j-1}$ ,也有可能是最新进了的第j个元素 $x_{j}$。
+
+**这样计算分母只需要一次循环。Flash attention的tiling attention就采用这样的计算方法。**
+
 ## **Attention** **为什么慢？**
 
 上一节提到，Transformer 的主要组成部分为 attention，因此优化 Transformer 重点在于优化 attention 的计算。那么，attention 为什么需要优化呢？或者说，注意力机制为什么慢？
@@ -124,6 +146,14 @@ if __name__ == '__main__':
 Flash Attention 的做法其实也是 kernel fusion，只是对应的 kernel 专门针对数据的换入换出进行了优化 (**IO-aware**)，尽可能最小化 HBM 和 SRAM 之间的数据交换次数。
 
 ## **Flash Attention** **介绍**
+
+### 简介
+
+ FlashAttention 是一种提高Transformer模型效率的方法。针对提高注意力操作的效率，模型能够以更快的效率训练和推理。FlashAttention 通过重新排列注意力计算顺序，并利用分块和重计算来显著加速计算的算法，它将内存使用量从序列长度的二次方降低到线性。
+
+Flash Attention 不是在每次计算迭代中多次加载查询、键和值或中间计算结果，而是仅加载一次所有数据（查询、键和值）。并且使用分块技术，将输入数据从 HBM（GPU 内存）加载到 SRAM（高速缓存），然后针对该块执行注意力计算，并在 HBM 中更新输出。通过避免将大型中间注意力矩阵写入 HBM，减少了内存读写的次数，从而实现了 2-4 倍的时钟时间加速。通过策略性地最小化不同类型内存之间的数据来回传输，Flash Attention 能够显著优化资源利用率。关键策略包括 “内核融合”，它将多个计算步骤合并为一个操作，减少了重复数据传输的需求，从而降低了开销。另一个关键策略是 “分块”，它涉及将输入数据分成较小的块以促进并行处理，优化内存使用，为具有更大输入大小的模型提供了可扩展的解决方案。
+
+---
 
 本节介绍 Flash ttention 的动机、具体方法和实现细节，并基于 Numpy 实现 Flash Attention 的主体算法（代码已开源，链接(https//gist.github.com/xiabingquan/a4a9a743f97aadd531ed6218be20afd2)）。
 
@@ -187,9 +217,25 @@ class SoftMax(object):
 
 #### tiling softmax 
 
+在标准注意力机制中，HBM 用于存储、读取和写入注意力计算中使用的键、查询和值。然而，注意力计算中涉及的操作经常导致 HBM 和片上 SRAM 之间频繁的数据传输。例如，**在计算过程中，键、查询和值从 HBM 加载到片上 SRAM 进行处理，中间结果和最终输出在注意力机制的每个步骤后都写回到 HBM**。**HBM 和 SRAM 之间频繁的数据移动由于在数据传输和处理上花费的时间而导致高开销**【4】。带着下述公式【5】来理解：
+
+![img](./assets/16412ba701a34bf9b63a8bb414ebe7dc.png)
+
+![img](./assets/a90370edc9424390ad1fbbfe99db5980.png)
+
+ 这里展示 FlashAttention 前向传播的示意图：通过分块和 softmax 重缩放，以块为单位操作，避免了从 HBM 进行读写，同时无需近似便可获得正确的输出。
+
+![img](./assets/af4a7763ea75427c9de50f5d82d27245.png)
+
 使用 tiling 技巧的 softmax 的算法如下图所示。
 
 <img src="./assets/e35dcff51b8c2eb8b8d82d7e9b484776.png" alt="img" style="zoom: 67%;" />
+
+<img src="./assets/image-20241215191727494.png" alt="image-20241215191727494" style="zoom:67%;" />
+
+关于这里为什么采用 $\left\lceil \frac{M}{4d} \right\rceil$ ,是因为查询（query）、键（key）和值（value)向量都是 d 维的，并且还需要将它们组合成输出的 d 维向量。所以，这个大小基本上允许在使用查询、键、值和输出向量时最大化使用SRAM的容量。
+
+一个简单的例子：假设M = 10000，d = 50。在这个例子中，块的大小是 $\frac{10000}{4 \times 50} = 50$ 。所以在这个例子中，每次会加载50个查询、键、值和输出向量的块，以确保减少HBM和SRAM之间的读写次数。
 
 该算法的实现如下：
 
@@ -345,10 +391,6 @@ def forward(self, q, k, v):
 
 
 
-
-
-
-
 ## Transformer的时空复杂度与标准注意力的问题
 
 FlashAttention是斯坦福联合纽约州立大学在22年6月份提出的一种具有 IO 感知，且兼具快速、内存高效的新型注意力算法。它要解决一个什么样的问题呢？
@@ -405,7 +447,7 @@ compute-bound计算复杂，但不需要很多数据，memory-bound计算不复�
 
 https://gist.github.com/xiabingquan/a4a9a743f97aadd531ed6218be20afd2
 
-
+https://blog.csdn.net/weixin_65514978/article/details/141609201?spm=1001.2014.3001.5501
 
 
 

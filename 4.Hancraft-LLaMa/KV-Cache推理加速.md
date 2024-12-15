@@ -99,7 +99,21 @@ KV Cache的本质是以空间换时间，它将历史输入的token的KV缓存�
 2. 预测新token只与输入的最后一个token的注意力值相关，而注意力值与最后一个token的Q和所有输入token的KV相关，每一层的注意力不变，进而每一层的KV都是不变的
 3. 只适用于Decoder架构，因为只与之前的token进行计算，得到的注意力值不会变化，第一层、第二层、第三层到第l ll层； 如果只有一层，那就不仅仅适用于Decoder架构
 
+## 注意力机制计算量
 
+### 原始注意力（二次增长）
+
+计算注意力得分所需的浮点运算数（FLOPs）。对于给定的注意力头，对于一个批量大小为batch且总长度为t的序列（包括提示和生成的完成序列），注意力得分矩阵通过一个形状为（t, d_head）的查询张量与一个转置的形状为（d_head, t）的键张量相乘而生成。
+
+单次矩阵乘法需要多少FLOPs？形状为（m，n）的矩阵与另一个形状为（n，p）的矩阵乘法大约涉及2mnp次操作，这里加法次数需要注意一下。
+$$
+M^{m, n} \times N^{n, p} \Rightarrow 2mnp
+$$
+在本例子中，单头单序列的注意力得分计算大约需要 $2 * d_{head} * t^2$ 次FLOPs。总体而言，注意力得分计算所需的FLOPs为 $2 \times batch \times n_{layers} \times n_{head} \times d_{head} \times t^2=2 \times batch \times n_{layers} \times d_{model} \times t^2$ 。显然，**计算量随t的二次增长显而易见**。
+
+### KV缓存实现线性注意力增长
+
+转置后的键张量仍然是形状（t, d_head），但查询张量现在的形状是（d_head, 1）。因此，单头单序列的注意力得分计算现在需要 $2 \times d_{head}$  次FLOPs，而总体的注意力计算需要 $2 \times batch \times n_{layers} \times d_{model} \times t$ 次FLOPs。**注意力计算现在随序列总长度线性增长**。
 
 ## kv cache参数量估计
 
@@ -176,3 +190,11 @@ class GPT2Attention(nn.Module):
 
 ```
 
+
+
+## 参考
+
+- https://blog.csdn.net/weixin_65514978/article/details/141399339?spm=1001.2014.3001.5502
+- https://dreamit.blog.csdn.net/article/details/130878522
+- https://blog.csdn.net/weixin_65514978/article/details/141399339?spm=1001.2014.3001.5502
+- https://blog.csdn.net/LF_AI/article/details/130838524
