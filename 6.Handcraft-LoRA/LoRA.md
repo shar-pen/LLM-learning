@@ -17,13 +17,12 @@ LoRA（论文：**LoRA: LOW-RANK ADAPTATION OF LARGE LANGUAGE MODELS**），该�
 ![img](./assets/lora技术原理.png)
 
 可训练层维度和预训练模型层维度一致为`d`，先将维度`d`通过全连接层降维至r，再从`r`通过全连接层映射回`d`维度，其中，`r<<d`，`r`是矩阵的秩，这样矩阵计算就从`d x d`变为`d x r + r x d`，参数量减少很多。
-  
+
 若原本全连接层为`768×768`。我们通过`A`,`B`替代，可以变成`768×8 `、`8×768`。
 参数量从`768×768`变成了`768×8 + 8×768`
 
 ![img](./assets/lora技术图.png)
 微调时，**固定模型的其他参数，只优化新增的两个矩阵****`A`****,****`B`****的权重参数**，将PLM（Pre-trained Language Model）跟新增的通路两部分的结果加起来作为最终的结果（两边通路的输入跟输出维度是一致的），即`h=Wx+BAx`。**第一个矩阵的A的权重参数会通过高斯函数初始化**，而**第二个矩阵的B的权重参数则会初始化为零矩阵**，这样能保证训练开始时新增的通路BA=0从而对模型结果没有影响。
-
 $$
 h=W_{0} x+\Delta W x=W_{0} x+B A x
 $$
@@ -270,7 +269,7 @@ lora_model.print_trainable_parameters()
 
 ```
 
-可以看到训练的参数仅仅是是全部参数的14%。
+可以看到训练的参数仅仅是是全部参数的 0.14%。
 
 lora模型定义好后，就可以训练了
 
@@ -319,7 +318,7 @@ trainer.train()
         elif self.merged:
             result = self.base_layer(x, *args, **kwargs)
         else:
-            **result = self.base_layer(x, *args, **kwargs)**
+            result = self.base_layer(x, *args, **kwargs)
             torch_result_dtype = result.dtype
             for active_adapter in self.active_adapters:
                 if active_adapter not in self.lora_A.keys():
