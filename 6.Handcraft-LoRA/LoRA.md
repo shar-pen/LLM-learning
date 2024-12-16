@@ -48,7 +48,7 @@ $$
 使用Qwen2.5-1.5B进行代码演示
 
 ```Python
-from modelscope import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 model_path = '/Qwen/Qwen2___5-1___5B-Instruct'
 model = AutoModelForCausalLM.from_pretrained(
     model_path,
