@@ -347,3 +347,140 @@ trainer = Trainer(model=model,
 trainer.train()
 ```
 
+
+
+
+
+# 改进Alpaca源码
+
+## 改进文件读取和预处理
+
+1.huggingface的dataset读取
+
+```python
+from datasets import load_dataset
+
+dataset = load_dataset('json', 
+                       data_dir='/data02/hyzhang10/pengxia2/tws/data', 
+                       data_files={
+                           'train': 'alpaca_data_100.json', 
+                        #    'test': 'alpaca_data_100.json'
+                           }
+                       )
+print(dataset)
+```
+
+输出
+
+```
+DatasetDict({
+    train: Dataset({
+        features: ['instruction', 'input', 'output'],
+        num_rows: 100
+    })
+})
+```
+
+2.dataset的批量预处理
+
+```python
+IGNORE_INDEX = -100
+PROMPT_DICT = {
+    "prompt_input": (
+        "Below is an instruction that describes a task, paired with an input that provides further context. "
+        "Write a response that appropriately completes the request.\n\n"
+        "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
+    ),
+    "prompt_no_input": (
+        "Below is an instruction that describes a task. "
+        "Write a response that appropriately completes the request.\n\n"
+        "### Instruction:\n{instruction}\n\n### Response:"
+    ),
+}
+prompt_input, prompt_no_input = PROMPT_DICT["prompt_input"], PROMPT_DICT["prompt_no_input"]
+
+def preprocess_func(example):
+    source = prompt_input.format_map(example) if example.get("input", "") != "" else prompt_no_input.format_map(example)
+    target = f"{example['output']}{tokenizer.eos_token}"
+    full_example = source + target
+    full_example_tokenzied = tokenizer(full_example, return_tensors="pt",padding="longest", max_length=tokenizer.model_max_length, truncation=True)
+    input_ids = full_example_tokenzied['input_ids'][0]
+    labels = copy.deepcopy(input_ids)
+    source_tokenzied = tokenizer(source, return_tensors="pt",padding="longest", max_length=tokenizer.model_max_length, truncation=True)
+    labels[:len(source_tokenzied['input_ids'][0])] = IGNORE_INDEX
+    return dict(
+        input_ids=input_ids, 
+        labels=labels
+    )
+
+
+# preprocess_func(dataset['train'][0])
+train_ds = dataset['train'].map(preprocess_func, remove_columns=list(dataset['train'].features.keys()))
+print(train_ds)
+```
+
+输出
+
+```
+Dataset({
+    features: ['input_ids', 'labels'],
+    num_rows: 100
+})
+```
+
+## 半精度训练
+
+原始Alpaca训练7B模型需要四张A100卡，不算数据单独模型训练也需要100GB以上的显存，这里我改为bf16训练，可用一张A800(80G)训练。更改的地方包括 
+
+1.模型加载，加载时设置torch_dtype
+
+```
+model_name_or_path = '../DataCollection/officials/Llama-2-7b'
+# model_name_or_path = '../DataCollection/officials/Qwen2.5-1.5b-Instruct'
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_name_or_path,
+    torch_dtype=torch.bfloat16
+)
+
+tokenizer = AutoTokenizer.from_pretrained(
+    model_name_or_path,
+    padding_side="right",
+    use_fast=False,
+)
+```
+
+必须要在加载前设置，不然训练时还会以默认的fp32加载入cuda，最终还会OOM
+
+
+
+2.训练参数，增加bf16=True
+
+```python
+training_args = TrainingArguments(output_dir='./output',
+                                  num_train_epochs=3,
+                                  per_device_train_batch_size=2,
+                                  per_device_eval_batch_size=8,
+                                  gradient_accumulation_steps=8,
+                                  evaluation_strategy='no',
+                                  save_strategy='steps',
+                                  save_steps=2000,
+                                  save_total_limit=1,
+                                  learning_rate=2e-5,
+                                  weight_decay=0.,
+                                  warmup_ratio=0.03,
+                                  lr_scheduler_type='cosine',
+                                  logging_steps=1,
+                                  report_to=[],
+                                  bf16=True
+                                  )
+trainer = Trainer(model=model, 
+                  tokenizer=tokenizer, 
+                  args=training_args, 
+                  train_dataset=train_dataset,
+                  eval_dataset=eval_dataset,
+                  data_collator=data_collator,
+                  )
+train_output = trainer.train()
+```
+
