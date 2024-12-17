@@ -22,7 +22,7 @@ LoRA（论文：**LoRA: LOW-RANK ADAPTATION OF LARGE LANGUAGE MODELS**），该�
 参数量从`768×768`变成了`768×8 + 8×768`
 
 ![img](./assets/lora技术图.png)
-微调时，**固定模型的其他参数，只优化新增的两个矩阵****`A`****,****`B`****的权重参数**，将PLM（Pre-trained Language Model）跟新增的通路两部分的结果加起来作为最终的结果（两边通路的输入跟输出维度是一致的），即`h=Wx+BAx`。**第一个矩阵的A的权重参数会通过高斯函数初始化**，而**第二个矩阵的B的权重参数则会初始化为零矩阵**，这样能保证训练开始时新增的通路BA=0从而对模型结果没有影响。
+微调时，**固定模型的其他参数，只优化新增的两个矩阵**`A`**,**`B`**的权重参数**，将PLM（Pre-trained Language Model）跟新增的通路两部分的结果加起来作为最终的结果（两边通路的输入跟输出维度是一致的），即`h=Wx+BAx`。**第一个矩阵的A的权重参数会通过高斯函数初始化**，而**第二个矩阵的B的权重参数则会初始化为零矩阵**，这样能保证训练开始时新增的通路BA=0从而对模型结果没有影响。
 $$
 h=W_{0} x+\Delta W x=W_{0} x+B A x
 $$
@@ -94,7 +94,7 @@ Qwen2ForCausalLM(
 
 ```Python
 from peft import LoraConfig, TaskType, get_peft_model
-config = LoraConfig(task_type=TaskType.CAUSAL_LM, target_modules=['q_proj', 'v_proj'], r=16, lora_alpha=16)
+config = LoraConfig(task_type=TaskType.CAUSAL_LM, target_modules=['q_proj', 'v_proj'], modules_to_save=['lm_head'], r=16, lora_alpha=16)
 config
 ```
 
@@ -253,7 +253,12 @@ PeftModelForCausalLM(
         )
         (norm): Qwen2RMSNorm((1536,), eps=1e-06)
       )
-      (lm_head): Linear(in_features=1536, out_features=151936, bias=False)
+      (lm_head): ModulesToSaveWrapper(
+        (original_module): Linear(in_features=1536, out_features=151936, bias=False)
+        (modules_to_save): ModuleDict(
+          (default): Linear(in_features=1536, out_features=151936, bias=False)
+        )
+      )
     )
   )
 )
@@ -265,19 +270,19 @@ PeftModelForCausalLM(
 
 ```Python
 lora_model.print_trainable_parameters()  
-# trainable params: 2,179,072 || all params: 1,545,893,376 || trainable%: 0.1410
+# trainable params: 235,552,768 || all params: 1,779,267,072 || trainable%: 13.2388
 
 ```
 
-可以看到训练的参数仅仅是是全部参数的 0.14%。
+可以看到训练的参数仅仅是是全部参数的 13.23%。
 
 lora模型定义好后，就可以训练了
 
 ```Python
 from transformers import DataCollatorForSeq2Seq, TrainingArguments, Trainer
 args = TrainingArguments(
-    output_dir="/data01/tqbian/src/learning/LLM_Toturials/LoRa_Qwen2.5/output_model/",  
-    per_device_train_batch_size=32,  
+    output_dir="./output_model/",  
+    per_device_train_batch_size=16,  
     gradient_accumulation_steps=8,  
     logging_steps=50,  
     num_train_epochs=3 
@@ -293,10 +298,6 @@ trainer = Trainer(
 trainer.train()  
 
 ```
-
-完整代码请参考lora.ipynb，本文对过程只做简单的讲解。
-
-
 
 接着我们看下具体执行代码的时候lora是如何执行的
 
@@ -341,8 +342,21 @@ trainer.train()
 ```
 
 可以看到数据`x`有两条分路：1. 原始的PLM。2. **`lora_B(lora_A(dropout(x))) * scaling`**其中**`scaling`**可以参考我上文提到的**`lora_alpha`** 参数。
-
 两条分路的相加为最后的结果。
+  
+训练完成后，需要合并lora模型 
+
+```Python
+from peft import PeftModel
+lora_train_model = PeftModel.from_pretrained(model, model_id="./output_model/checkpoint")
+
+merge_model = lora_train_model.merge_and_unload()
+merge_model.save_pretrained("./output_model/merge_model")
+
+```
+
+完整代码请参考lora.ipynb，本文对过程只做简单的讲解。
+
 
 
 ## 参考
