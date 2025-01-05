@@ -246,8 +246,6 @@ config = PromptEncoderConfig(task_type=TaskType.CAUSAL_LM, num_virtual_tokens=10
 model = get_peft_model(model, config)      
 ```
 
-
-
 ### **P-Tuning** V2
 
 之前的Prompt Tuning和P-Tuning等方法存在两个主要的问题：
@@ -274,6 +272,12 @@ P-Tuning v2（论文： **P-Tuning v2: Prompt Tuning Can Be Comparable to Fine-t
 代码参考Prefix Tuning中的代码。
 
 
+
+## 区别和联系
+
+Prompt tuning 和 p tuning 大致一样，只在embedding中加入virtual token的embedding， p tuning 额外增加了mlp/lstm。
+
+P-tuning v2 和 prefix tuning 大致一样， 都是在每个block中加入kv，P-tuning v2直接用embedding变化成kv，prefix tuning把embedding换为embedding+mlp。
 
 ### 参考
 
