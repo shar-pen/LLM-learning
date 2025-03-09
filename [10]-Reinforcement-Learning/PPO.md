@@ -84,7 +84,7 @@ $s_{0}$ **是初始时智能体所处的状态，它只和环境有关**。我�
 
 整个优化过程由以上两点交替进行，最终收敛，得到我们想要的最优策略 $\pi^{*}$ 和能准确评估它的价值函数 $V_{\pi}^{*}$。
 
-<img src="https://pica.zhimg.com/v2-6f55414eb7f22bfd19d6912859eb8498_1440w.jpg" style="zoom:50%;" />
+<img src="./assets/v2-6f55414eb7f22bfd19d6912859eb8498_1440w.jpg" style="zoom:50%;" />
 
 **此时，你肯定会想，这是否意味着强化学习过程中一定存在** $\pi$ **和** $V_{\pi}$ **两个实体呢？**例如，这是否意味我们一定要训练两个神经网络，分别表示策略和价值评估？**答案是否定的：**
 
@@ -189,7 +189,7 @@ $\begin{aligned} \nabla J(\pi_{\theta}) & = E_{\tau \sim \pi_{\theta}}[\sum_{t=0
 
 总结来说 $\Psi_{t}$ 可能有如下的实现方式：
 
-![](https://pic2.zhimg.com/v2-94bcc468bda71521d1f68db42b4ccf1f_r.jpg)来自 GAE paper
+![](./assets/v2-94bcc468bda71521d1f68db42b4ccf1f_r.jpg)来自 GAE paper
 
 我们来做逐一讲解。
 
@@ -387,7 +387,7 @@ $\begin{aligned} \nabla J(\pi_{\theta}) & = E_{\tau \sim \pi_{\theta}}[\sum_{t=0
 
 其中，衡量单步价值的 $\Psi_{t}$ 可以有如下几种设计方案：
 
-![](https://pic2.zhimg.com/v2-94bcc468bda71521d1f68db42b4ccf1f_r.jpg)
+![](./assets/v2-94bcc468bda71521d1f68db42b4ccf1f_r.jpg)
 
 **基于之前的分析，我们现在选择第 6 种（TD error）作为** $\Psi_{t}$ **，它衡量在某个时刻 t 选择某个动作 a 会比选择其它的动作要好多少**。需要注意的是，本质上当 $V_{\pi}$ 等于客观存在的真值 $V_{\pi}^{*}$ 时，6 是 5 的无偏估计。
 
@@ -426,7 +426,7 @@ $arg \min_{V_{\phi}}L(V_{\phi}) = E_{t}[(r_{t} + \gamma V_{\phi}(s_{t+1}) - V_{\
 *   **价值评估**：给定一个策略 $\pi$，如何准确评估当前策略的价值 $V_{\pi}$ ？
 *   **策略迭代**：给定一个当前策略的价值评估 $V_{\pi}$ ，如何据此优化策略 $\pi$
 
-<img src="https://pica.zhimg.com/v2-6f55414eb7f22bfd19d6912859eb8498_1440w.jpg" style="zoom:50%;" />
+<img src="./assets/v2-6f55414eb7f22bfd19d6912859eb8498_1440w.jpg" style="zoom:50%;" />
 
 我们结合 actor-critic 的框架把这个循环的优化过程展开来讲：
 
@@ -483,7 +483,7 @@ $\begin{aligned} E_{x\sim p(x)}[f(x)] & = \int p(x)f(x)dx \\ & = \int\frac{p(x)}
 
 **虽然数学上是有办法改写了，但是实际操作中，我们可能遇到 p(x) 和 q(x) 分布差异较大的问题。**这里我直接引用李宏毅老师的课堂 ppt 来说明这一点：
 
-![](https://pica.zhimg.com/v2-bcac958cfda20f0f1784313166fa7c38_r.jpg)
+![](./assets/v2-bcac958cfda20f0f1784313166fa7c38_r.jpg)
 
 *   我们假设 $E_{x \sim p(x)}[f(x)]$ 的真值是负数。
 *   由于 p(x) 和 q(x) 差异较大。在某次采样中，我们从 q(x) 里进行采样，大概率会采集到图中绿色曲线的高处，此时 f(x) 是正的。也就是说，在单次采样中，我们大概率会得到一个正的 f(x)。
@@ -518,7 +518,7 @@ $\begin{aligned} A_{\pi}(s_{t}, a_{t}) &= Q_{\pi}(s_t, a_t) - V_{\pi}(s_t)\\ &= 
 
 ### （1）方差与偏差
 
-![](https://pic3.zhimg.com/v2-36e602603c154fad31b81ad6091cd820_r.jpg)
+![](./assets/v2-36e602603c154fad31b81ad6091cd820_r.jpg)
 
 *   **低方差，低偏差**：`E(射击点) = 靶心`，且射击点密集分布在靶心周围。此时我们随机选一个射击点就能很好代表靶心
 *   **高方差，低偏差**：`E(射击点) = 靶心`，但射击点们离靶心的平均距离较远。此时随机一个射击点不能很好代表靶心，我们必须使用足够多的射击点才能估计靶心的坐标

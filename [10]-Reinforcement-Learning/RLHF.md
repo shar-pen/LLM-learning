@@ -8,11 +8,11 @@
 
 ### 1.1 强化学习整体流程  
 
-![](https://pic4.zhimg.com/v2-b547384a5307e3ed0a65ae9e6ba01491_r.jpg)
+![](./assets/v2-b547384a5307e3ed0a65ae9e6ba01491_r.jpg)
 
 *   强化学习的两个实体：**智能体（Agent）**与**环境（Environment）**
 *   强化学习中两个实体的交互：  
-    
+
 *   **状态空间 S**：S 即为 State，指环境中所有可能状态的集合
 *   **动作空间 A**：A 即为 Action，指智能体所有可能动作的集合
 *   **奖励 R：**R 即为 Reward，指智能体在环境的某一状态下所获得的奖励。
@@ -50,7 +50,7 @@ $V_{t} = R_{t} + \gamma V_{t+1}$
 
 我们在第一部分介绍了通用强化学习的流程，那么我们要怎么把这个流程对应到 NLP 任务中呢？**换句话说，NLP 任务中的智能体、环境、状态、动作等等，都是指什么呢？**
 
-![](https://pica.zhimg.com/v2-eb250d428d3b9a751d4ba3aeae70e290_r.jpg)
+![](./assets/v2-eb250d428d3b9a751d4ba3aeae70e290_r.jpg)
 
 回想一下我们对 NLP 任务做强化学习（RLHF）的目的：**我们希望给模型一个 prompt，让模型能生成符合人类喜好的 response**。再回想一下 gpt 模型做推理的过程：**每个时刻** $t$ **只产生一个 token，即 token 是一个一个蹦出来的，先有上一个 token，再有下一个 token。**  
 复习了这两点，现在我们可以更好解读上面这张图了：  
@@ -82,7 +82,7 @@ $V_{t} = R_{t} + \gamma V_{t+1}$
 本节中，我们在第二部分的基础上更进一步：更详细理清 NLP 语境下 RLHF 的运作流程。  
 我们从第二部分中已经知道：生成 token $A_{t}$ 和对应收益 $R_{t}, V_{t}$ 的并不是一个模型。那么在 RLHF 中到底有几个模型？他们是怎么配合做训练的？而我们最终要的是哪个模型？
 
-![](https://pica.zhimg.com/v2-22c2f6fce157dc4385a14f0de50d8136_r.jpg)
+![](./assets/v2-22c2f6fce157dc4385a14f0de50d8136_r.jpg)
 
 如上图，**在 RLHF-PPO 阶段，一共有四个主要模型**，分别是：  
 
@@ -103,7 +103,7 @@ $V_{t} = R_{t} + \gamma V_{t+1}$
 
 正如前文所说，**Actor 就是我们想要训练的目标语言模型。我们一般用 SFT 阶段产出的 SFT 模型来对它做初始化。**
 
-![](https://picx.zhimg.com/v2-77843f19b61a0b903793b0158e728877_r.jpg)
+![](./assets/v2-77843f19b61a0b903793b0158e728877_r.jpg)
 
 我们的最终目的是让 Actor 模型能产生符合人类喜好的 response。所以我们的策略是，先喂给 Actor 一条 prompt （这里假设 batch_size = 1，所以是 1 条 prompt），让它生成对应的 response。然后，我们再将 “prompt + response" 送入我们的“奖励 - loss” 计算体系中去算得最后的 loss，用于更新 actor。
 
@@ -111,7 +111,7 @@ $V_{t} = R_{t} + \gamma V_{t+1}$
 
 **Reference Model（以下简称 Ref 模型）一般也用 SFT 阶段得到的 SFT 模型做初始化，在训练过程中，它的参数是冻结的。**Ref 模型的主要作用是防止 Actor” 训歪”，那么它具体是怎么做到这一点的呢？
 
-![](https://pica.zhimg.com/v2-c4030ebb772b2619043f46b9ab5e58e8_r.jpg)
+![](./assets/v2-c4030ebb772b2619043f46b9ab5e58e8_r.jpg)
 
 “防止模型训歪” 换一个更详细的解释是：**我们希望训练出来的 Actor 模型既能达到符合人类喜好的目的，又尽量让它和 SFT 模型不要差异太大**。简言之，**我们希望两个模型的输出分布尽量相似**。那什么指标能用来衡量输出分布的相似度呢？我们自然而然想到了 **KL 散度**。
 
@@ -120,7 +120,7 @@ $V_{t} = R_{t} + \gamma V_{t+1}$
 *   **对 Actor 模型**，我们喂给它一个 prompt，它正常输出对应的 response。那么 response 中每一个 token 肯定有它对应的 log_prob 结果呀，我们把这样的结果记为 **log_probs**
 *   **对 Ref 模型**，我们把 Actor 生成的 "prompt + response" 喂给它，那么它同样能给出每个 token 的 log_prob 结果，我们记其为 **ref_log_probs**
 *   那么这两个模型的输出分布相似度就可以用**`ref_log_probs - log_probs`**来衡量，我们可以从两个方面来理解这个公式：  
-    
+
 *   **从直觉上理解**，ref_log_probs 越高，说明 Ref 模型对 Actor 模型输出的肯定性越大。即 Ref 模型也认为，对于某个 $S_{t}$ ，输出某个 $A_{t}$ 的概率也很高（ $P(A_{t} | S_{t})$ ）。这时可以认为 Actor 模型较 Ref 模型没有训歪
 *   **从 KL 散度上理解**， $KL[Actor(X) || Ref(X)] = E_{x\sim Actor(x)}[log\frac{Actor(x)}{Ref(x)}] = log\_probs - ref\_log\_probs$ （当然这里不是严格的等于，只是 KL 散度的近似），这个值越小意味着两个分布的相似性越高。
 
@@ -136,7 +136,7 @@ $V_{t} = R_{t} + \gamma V_{t+1}$
 这是因为，当我们在前文讨论总收益 $V_{t}$ （即时 + 未来）时，我们是站在上帝视角的，也就是这个 $V_{t}$ 就是客观存在的、真正的总收益。但是我们在训练模型时，就没有这个上帝视角加成了，**也就是在** $t$ **时刻，我们给不出客观存在的总收益** $V_{t}$ **，我们只能训练一个模型去预测它。**  
 **所以总结来说，在 RLHF 中，我们不仅要训练模型生成符合人类喜好的内容的能力（Actor），也要提升模型对人类喜好量化判断的能力（Critic）**。这就是 Critic 模型存在的意义。我们来看看它的大致架构：
 
-![](https://pic4.zhimg.com/v2-6d1497cc608b9b5fd059870c7117e381_r.jpg)
+![](./assets/v2-6d1497cc608b9b5fd059870c7117e381_r.jpg)
 
 deepspeed-chat 采用了 Reward 模型作为它的初始化，所以这里我们也按 Reward 模型的架构来简单画画它。你可以简单理解成，Reward/Critic 模型和 Actor 模型的架构是很相似的（毕竟输入都一样），同时，它在最后一层增加了一个 Value Head 层，该层是个简单的线形层，用于将原始输出结果映射成单一的 $V_{t}$ 值。  
 
@@ -166,7 +166,7 @@ Reward Model 用于计算生成 token $A_{t}$ 的即时收益，它就是 RW 阶
 
 Reward 模型和 critic 模型非常相似，这里我们就只给出架构图，不再做过多的说明。关于 Reward 模型的训练过程，后续有时间也会出个原理和代码解析。
 
-![](https://picx.zhimg.com/v2-96be8ab460ede07b5879ebc27400659f_r.jpg)
+![](./assets/v2-96be8ab460ede07b5879ebc27400659f_r.jpg)
 
 四、RLHF 中的 loss 计算
 -----------------
@@ -230,7 +230,7 @@ $actor\_loss = -Adv_{t}log P(A_{t}|S_{t})$
 同时注意，这个 actor_loss 应该是 response 的所有 token loss 的 sum 或者 avg。这里为了表达方便，我们的公式略去了求和或求平均的符号。  
 按照这个理解， $R_{t}$ 应该表示每个 Actor 产出 token $A_{t}$ 带来的即时收益，正如下图所示（其中 $T$ 表示最后一个时刻）：  
 
-![](https://pic1.zhimg.com/v2-3d8bdc68829d51508017f8b17de85050_r.jpg)
+![](./assets/v2-3d8bdc68829d51508017f8b17de85050_r.jpg)
 
 但在 deepspeed-chat 的 RLHF 实践中，对 $R_{t}$ 做了另一种设计：
 
@@ -307,6 +307,7 @@ def compute_rewards(self, prompts, log_probs, ref_log_probs, reward_score,
 ```
 
 ###   
+
 （4）重新设计优势
 
 好，再总结一下，目前为止我们的 actor_loss 为：
@@ -392,7 +393,7 @@ $actor\_loss = -Adv_{t}log P(A_{t}|S_{t})$
 
 基于这些改造，我们重新理一遍 RLHF-PPO 的训练过程。
 
-![](https://pic4.zhimg.com/v2-5b0028cc73d9f2aa599b256df24bda83_r.jpg)
+![](./assets/v2-5b0028cc73d9f2aa599b256df24bda83_r.jpg)
 
 *   第一步，我们准备一个 batch 的 prompts
 *   第二步，我们将这个 batch 的 prompts 喂给 Actor 模型，让它生成对应的 responses
